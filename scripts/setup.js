@@ -72,7 +72,7 @@ async function main() {
   console.log('Step 1 of 6: Vercel project name\n');
   console.log('  Pick a name for your Vercel project. It determines your URL:');
   console.log('  https://{project-name}.vercel.app\n');
-  console.log('  Example: daily-weight-dustin\n');
+  console.log('  Example: daily-blood-pressure-dustin\n');
 
   const projectName = await promptRequired('Project name:');
   const projectUrl = `https://${projectName}.vercel.app`;
