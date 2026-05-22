@@ -22,7 +22,7 @@ Each reading appears as an all-day event titled `120/80 mmHg (7:04 AM)` on the d
 Clone the repo and install dependencies:
 
 ```sh
-git clone https://github.com/your-username/daily-blood-pressure.git
+git clone https://github.com/omarmung/daily-blood-pressure.git
 cd daily-blood-pressure
 npm install
 ```
@@ -106,6 +106,7 @@ The setup script sets all the manual variables for you. The auto-provisioned one
 - **`/api/status` endpoint** — returns the last successful sync timestamp from Redis, so you can verify the cron is running without checking Vercel logs.
 - **Input validation in setup script** — validate `FEED_START_DATE` format and `FEED_TIMEZONE` against the IANA database before setting env vars.
 - **Custom domain support** — the setup script currently assumes a `.vercel.app` URL; it should handle custom domains gracefully.
+- **Direct storage link in setup** — step 5 currently links to the generic Vercel dashboard; should construct a direct link to the project's storage page.
 
 ---
 
