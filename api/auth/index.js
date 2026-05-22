@@ -6,11 +6,11 @@ export default async function handler(req, res) {
   const feedName = process.env.FEED_NAME;
   if (!feedName) return res.status(500).send('FEED_NAME env var is not set.');
 
-  const existing = await redis.get(`withings:refresh:${feedName}`);
+  const existing = await redis.get(`bp:withings:refresh:${feedName}`);
   if (existing) {
     return res.status(400).send(
       `Feed "${feedName}" is already initialized. ` +
-      `To reset, delete the KV key "withings:refresh:${feedName}" manually.`
+      `To reset, delete the KV key "bp:withings:refresh:${feedName}" manually.`
     );
   }
 

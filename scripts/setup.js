@@ -57,8 +57,8 @@ function hr() {
 }
 
 async function main() {
-  console.log('\ndaily-weight — setup\n');
-  console.log('This script will configure your Withings weight feed on Vercel.');
+  console.log('\ndaily-blood-pressure — setup\n');
+  console.log('This script will configure your Withings blood pressure feed on Vercel.');
   console.log('It takes about 5 minutes.\n');
 
   // Check Vercel CLI
@@ -99,7 +99,7 @@ async function main() {
   console.log('Step 3 of 6: Feed configuration\n');
 
   console.log('  Feed name — used in the .ics filename and calendar title.');
-  console.log('  Example: "dustin" → weight-dustin.ics, "Weight - Dustin"\n');
+  console.log('  Example: "dustin" → bp-dustin.ics, "Blood Pressure - Dustin"\n');
   const feedName = await promptRequired('Feed name (e.g. dustin):');
 
   console.log('\n  Start date — earliest weight measurement to include in the feed.');
@@ -110,9 +110,6 @@ async function main() {
   console.log('  Must be an IANA timezone name.');
   console.log('  Examples: America/Los_Angeles, America/New_York, Europe/London\n');
   const timezone = await promptRequired('Timezone:');
-
-  console.log('\n  Weight units for event titles.\n');
-  const units = await promptDefault('Units (lbs or kg):', 'kg');
 
   // ── Step 4: Link + set env vars ─────────────────────────────
   hr();
@@ -137,7 +134,6 @@ async function main() {
     ['FEED_NAME', feedName],
     ['FEED_START_DATE', startDate],
     ['FEED_TIMEZONE', timezone],
-    ['FEED_UNITS', units],
     ['SETUP_TOKEN', setupToken],
   ];
 

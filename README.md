@@ -1,8 +1,8 @@
-# daily-weight
+# daily-blood-pressure
 
-Subscribable calendar feed of your daily Withings weight measurements. A cron job fetches your weights once a day and publishes them as a `.ics` file you can subscribe to in Apple Calendar, Fantastical, Google Calendar, or any other calendar app.
+Subscribable calendar feed of your daily Withings blood pressure measurements. A cron job fetches your readings once a day and publishes them as a `.ics` file you can subscribe to in Apple Calendar, Fantastical, Google Calendar, or any other calendar app.
 
-Each weigh-in appears as an all-day event titled `78.2 kg (7:04 AM)` on the date you stepped on the scale.
+Each reading appears as an all-day event titled `120/80 mmHg (7:04 AM)` on the date you took the measurement.
 
 **Stack:** Vercel (cron + blob storage) · Upstash Redis · Withings API
 
@@ -10,7 +10,7 @@ Each weigh-in appears as an all-day event titled `78.2 kg (7:04 AM)` on the date
 
 ## What you need
 
-- A [Withings](https://www.withings.com) scale and account
+- A [Withings](https://www.withings.com) blood pressure monitor and account
 - A [Vercel](https://vercel.com) account (free Hobby plan is fine)
 - Node.js 18 or later
 - The [Vercel CLI](https://vercel.com/docs/cli): `npm i -g vercel`
@@ -22,8 +22,8 @@ Each weigh-in appears as an all-day event titled `78.2 kg (7:04 AM)` on the date
 Clone the repo and install dependencies:
 
 ```sh
-git clone https://github.com/your-username/daily-weight.git
-cd daily-weight
+git clone https://github.com/your-username/daily-blood-pressure.git
+cd daily-blood-pressure
 npm install
 ```
 
@@ -41,9 +41,9 @@ npm run setup
 
 The script walks you through everything in six steps:
 
-1. **Pick a project name** — determines your Vercel URL (e.g. `daily-weight-dustin` → `daily-weight-dustin.vercel.app`)
+1. **Pick a project name** — determines your Vercel URL (e.g. `daily-bp-dustin` → `daily-bp-dustin.vercel.app`)
 2. **Create a Withings developer app** — the script gives you the exact callback URL to register; make sure to check "Public API integration" when creating the app
-3. **Configure your feed** — name, start date, timezone, and units
+3. **Configure your feed** — name, start date, and timezone
 4. **Connect to Vercel** — links the project and sets all environment variables automatically
 5. **Connect storage** — Upstash Redis (for OAuth tokens) and Vercel Blob (for the `.ics` file), both from the Vercel dashboard
 6. **Deploy and authorize** — deploys the project and walks you through the Withings OAuth flow
@@ -60,7 +60,7 @@ At the end of `npm run setup`, the script prints your `.ics` URL directly. Copy 
 - **Fantastical:** File → New Calendar Subscription → paste the URL
 - **Google Calendar:** Other calendars → From URL → paste the URL
 
-The calendar app will poll the feed periodically and new weights will appear within a few hours of the cron running. The cron schedule is set in `vercel.json` — adjust it to fit your timezone.
+The calendar app will poll the feed periodically and new readings will appear within a few hours of the cron running. The cron schedule is set in `vercel.json` — adjust it to fit your timezone.
 
 ---
 
@@ -69,12 +69,12 @@ The calendar app will poll the feed periodically and new weights will appear wit
 ```
 Vercel Cron (daily)
   → refreshes Withings OAuth token (stored in Upstash Redis)
-  → fetches all weight measurements since FEED_START_DATE
-  → generates a .ics file with one all-day event per measurement
-  → overwrites weight-{name}.ics in Vercel Blob
+  → fetches all blood pressure measurements since FEED_START_DATE
+  → generates a .ics file with one all-day event per reading
+  → overwrites bp-{name}.ics in Vercel Blob
 ```
 
-The cron runs once per day at 16:30 UTC (8:30 AM PST / 9:30 AM PDT). Vercel Hobby plan timing is approximate within the hour.
+Each reading session produces one calendar event. Readings with only systolic or only diastolic present are skipped.
 
 ### Multiple people
 
@@ -91,7 +91,6 @@ The codebase is designed for one Withings account per deployment. To run feeds f
 | `FEED_NAME` | Short identifier, e.g. `dustin` — used in filenames and the calendar title |
 | `FEED_START_DATE` | Earliest date to include, e.g. `2024-01-01` |
 | `FEED_TIMEZONE` | IANA timezone name, e.g. `America/Los_Angeles` |
-| `FEED_UNITS` | `lbs` or `kg` (default: `kg`) |
 | `UPSTASH_REDIS_REST_URL` | Auto-provisioned when you connect Upstash Redis in Vercel |
 | `UPSTASH_REDIS_REST_TOKEN` | Auto-provisioned when you connect Upstash Redis in Vercel |
 | `BLOB_READ_WRITE_TOKEN` | Auto-provisioned when you connect Vercel Blob |
@@ -118,4 +117,4 @@ If your Withings token ever becomes invalid (e.g. after a long gap), visit:
 https://your-project.vercel.app/api/auth
 ```
 
-Before doing so, delete the `withings:refresh:{FEED_NAME}` and `withings:userid:{FEED_NAME}` keys from your Upstash Redis database, then complete the OAuth flow again.
+Before doing so, delete the `bp:withings:refresh:{FEED_NAME}` and `bp:withings:userid:{FEED_NAME}` keys from your Upstash Redis database, then complete the OAuth flow again.

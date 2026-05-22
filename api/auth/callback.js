@@ -31,8 +31,8 @@ export default async function handler(req, res) {
   }
 
   const { userid, refresh_token } = body;
-  await redis.set(`withings:userid:${feedName}`, userid);
-  await redis.set(`withings:refresh:${feedName}`, refresh_token);
+  await redis.set(`bp:withings:userid:${feedName}`, userid);
+  await redis.set(`bp:withings:refresh:${feedName}`, refresh_token);
 
   res.send(`<!DOCTYPE html>
 <html>

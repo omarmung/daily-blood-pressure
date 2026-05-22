@@ -4,7 +4,7 @@ import { put } from '@vercel/blob';
 const redis = Redis.fromEnv();
 
 async function refreshAccessToken(feedName) {
-  const storedRefresh = await redis.get(`withings:refresh:${feedName}`);
+  const storedRefresh = await redis.get(`bp:withings:refresh:${feedName}`);
   if (!storedRefresh) {
     throw new Error(`No refresh token in KV for feed "${feedName}". Visit /api/auth to set up.`);
   }
@@ -26,11 +26,11 @@ async function refreshAccessToken(feedName) {
   if (!json.body?.refresh_token) throw new Error(`Withings token refresh missing refresh_token: ${JSON.stringify(json)}`);
   if (!json.body?.access_token) throw new Error(`Withings token refresh missing access_token: ${JSON.stringify(json)}`);
 
-  await redis.set(`withings:refresh:${feedName}`, json.body.refresh_token);
+  await redis.set(`bp:withings:refresh:${feedName}`, json.body.refresh_token);
   return json.body.access_token;
 }
 
-async function fetchMeasurements(accessToken, startDate) {
+async function fetchMeasurements(accessToken, startDate, meastype) {
   const startUnix = Math.floor(new Date(`${startDate}T00:00:00Z`).getTime() / 1000);
   const all = [];
   let offset = null;
@@ -38,7 +38,7 @@ async function fetchMeasurements(accessToken, startDate) {
   do {
     const params = new URLSearchParams({
       action: 'getmeas',
-      meastype: '1',
+      meastype: String(meastype),
       category: '1',
       startdate: String(startUnix),
       enddate: String(Math.floor(Date.now() / 1000)),
@@ -66,9 +66,7 @@ async function fetchMeasurements(accessToken, startDate) {
 
     for (const grp of body.measuregrps) {
       for (const m of grp.measures) {
-        if (m.type === 1) {
-          all.push({ unix: grp.date, kg: m.value * Math.pow(10, m.unit) });
-        }
+        all.push({ grpid: grp.grpid, date: grp.date, value: m.value * Math.pow(10, m.unit) });
       }
     }
 
@@ -76,6 +74,35 @@ async function fetchMeasurements(accessToken, startDate) {
   } while (offset !== null);
 
   return all;
+}
+
+async function fetchReadings(accessToken, startDate) {
+  const [diastolicMeas, systolicMeas] = await Promise.all([
+    fetchMeasurements(accessToken, startDate, 9),
+    fetchMeasurements(accessToken, startDate, 10),
+  ]);
+
+  const diastolicByGrp = new Map(diastolicMeas.map(m => [m.grpid, m]));
+  const systolicByGrp = new Map(systolicMeas.map(m => [m.grpid, m]));
+
+  const readings = [];
+
+  for (const [grpid, systolic] of systolicByGrp) {
+    const diastolic = diastolicByGrp.get(grpid);
+    if (!diastolic) {
+      console.warn(`Skipping grpid ${grpid}: systolic present but no diastolic`);
+      continue;
+    }
+    readings.push({ grpid, date: systolic.date, systolic: systolic.value, diastolic: diastolic.value });
+  }
+
+  for (const [grpid] of diastolicByGrp) {
+    if (!systolicByGrp.has(grpid)) {
+      console.warn(`Skipping grpid ${grpid}: diastolic present but no systolic`);
+    }
+  }
+
+  return readings;
 }
 
 function localDateAndTime(unix, timezone) {
@@ -99,33 +126,31 @@ function localDateAndTime(unix, timezone) {
   return { dtstart, dtend, timeStr };
 }
 
-function formatWeight(kg, units) {
-  return units === 'lbs'
-    ? `${(kg * 2.20462).toFixed(1)} lbs`
-    : `${kg.toFixed(1)} kg`;
+function formatBP(systolic, diastolic) {
+  return `${Math.round(systolic)}/${Math.round(diastolic)} mmHg`;
 }
 
-function buildIcs(measurements, { feedName, timezone, units }) {
+function buildIcs(readings, { feedName, timezone }) {
   const displayName = feedName[0].toUpperCase() + feedName.slice(1);
-  measurements.sort((a, b) => a.unix - b.unix);
+  readings.sort((a, b) => a.date - b.date);
 
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//daily-weight//EN',
-    `X-WR-CALNAME:Weight - ${displayName}`,
+    'PRODID:-//daily-blood-pressure//EN',
+    `X-WR-CALNAME:Blood Pressure - ${displayName}`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
   ];
 
-  for (const { unix, kg } of measurements) {
-    const { dtstart, dtend, timeStr } = localDateAndTime(unix, timezone);
+  for (const { grpid, date, systolic, diastolic } of readings) {
+    const { dtstart, dtend, timeStr } = localDateAndTime(date, timezone);
     lines.push(
       'BEGIN:VEVENT',
       `DTSTART;VALUE=DATE:${dtstart}`,
       `DTEND;VALUE=DATE:${dtend}`,
-      `SUMMARY:${formatWeight(kg, units)} (${timeStr})`,
-      `UID:weight-${feedName}-${unix}@daily-weight`,
+      `SUMMARY:${formatBP(systolic, diastolic)} (${timeStr})`,
+      `UID:bp-${feedName}-${grpid}@daily-blood-pressure`,
       'END:VEVENT',
     );
   }
@@ -145,7 +170,6 @@ export default async function handler(req, res) {
     FEED_NAME: feedName,
     FEED_START_DATE: startDate,
     FEED_TIMEZONE: timezone,
-    FEED_UNITS: units = 'kg',
   } = process.env;
 
   if (!feedName) throw new Error('FEED_NAME is required');
@@ -153,15 +177,15 @@ export default async function handler(req, res) {
   if (!timezone) throw new Error('FEED_TIMEZONE is required');
 
   const accessToken = await refreshAccessToken(feedName);
-  const measurements = await fetchMeasurements(accessToken, startDate);
-  const ics = buildIcs(measurements, { feedName, timezone, units });
+  const readings = await fetchReadings(accessToken, startDate);
+  const ics = buildIcs(readings, { feedName, timezone });
 
-  const blob = await put(`weight-${feedName}.ics`, ics, {
+  const blob = await put(`bp-${feedName}.ics`, ics, {
     access: 'public',
     allowOverwrite: true,
     addRandomSuffix: false,
     contentType: 'text/calendar; charset=utf-8',
   });
 
-  res.json({ ok: true, count: measurements.length, url: blob.url });
+  res.json({ ok: true, count: readings.length, url: blob.url });
 }
