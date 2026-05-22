@@ -152,6 +152,9 @@ async function main() {
   hr();
   console.log('Step 5 of 6: Storage setup\n');
   console.log('  You need to connect two storage services to your Vercel project.\n');
+  // TODO: construct direct link to project storage page, e.g.
+  // https://vercel.com/{accountSlug}/{projectName}/stores
+  // Need to resolve accountSlug via `vercel whoami` or similar after linking.
   console.log('  Open your project in the Vercel dashboard:');
   console.log(`\n     https://vercel.com/dashboard\n`);
   console.log('  Then click "Storage" in the sidebar and connect both:\n');
@@ -181,14 +184,14 @@ async function main() {
   await pause('Complete the Withings authorization, then come back.');
 
   // ── Generate first feed ─────────────────────────────────────
-  console.log('\n  Generating your first weight feed...\n');
+  console.log('\n  Generating your first blood pressure feed...\n');
   let feedUrl = null;
   try {
     const response = await fetch(`${projectUrl}/api/cron?setup_token=${setupToken}`);
     const data = await response.json();
     if (data.ok) {
       feedUrl = data.url;
-      console.log(`  Done — ${data.count} weight events written.\n`);
+      console.log(`  Done — ${data.count} blood pressure readings written.\n`);
     } else {
       console.log(`  Cron returned an error: ${JSON.stringify(data)}`);
     }
@@ -208,7 +211,7 @@ async function main() {
     console.log('  Subscribe in Apple Calendar:');
     console.log('  File → New Calendar Subscription → paste the URL above\n');
   } else {
-    console.log('  The feed could not be generated automatically.');
+    console.log('  The blood pressure feed could not be generated automatically.');
     console.log('  Visit your Vercel dashboard → your project → Cron Jobs and trigger it manually.\n');
   }
   console.log('  The feed updates daily at the schedule configured in vercel.json.\n');
