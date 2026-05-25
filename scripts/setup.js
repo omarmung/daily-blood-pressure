@@ -102,7 +102,7 @@ async function main() {
   console.log('  Example: "dustin" → bp-dustin.ics, "Blood Pressure - Dustin"\n');
   const feedName = await promptRequired('Feed name (e.g. dustin):');
 
-  console.log('\n  Start date — earliest weight measurement to include in the feed.');
+  console.log('\n  Start date — earliest blood pressure measurement to include in the feed.');
   console.log('  Format: YYYY-MM-DD  Example: 2024-01-01\n');
   const startDate = await promptRequired('Start date:');
 
@@ -128,12 +128,14 @@ async function main() {
 
   console.log('\n  Setting environment variables...\n');
   const setupToken = randomBytes(32).toString('hex');
+  const cronSecret = randomBytes(32).toString('hex');
   const vars = [
     ['WITHINGS_CLIENT_ID', clientId],
     ['WITHINGS_CLIENT_SECRET', clientSecret],
     ['FEED_NAME', feedName],
     ['FEED_START_DATE', startDate],
     ['FEED_TIMEZONE', timezone],
+    ['CRON_SECRET', cronSecret],
     ['SETUP_TOKEN', setupToken],
   ];
 
